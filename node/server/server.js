@@ -6,7 +6,8 @@
 var express = require('express')
   , http = require('http')
   , morgan = require('morgan');
-
+var request = require('request');
+var fs = require('file-system');
 //Communication Python Node Shell
 var PythonShell = require('python-shell');
 var _mysql = require('mysql');
@@ -30,7 +31,7 @@ var server = http.createServer(app);
 server.listen(app.get('port'), function () {
 	console.log('Serveur: HTTP server listening on port ' + app.get('port'));
 });
-
+var i=0;
 // Robot constants 
 board = new five.Board();
 console.log('Serveur: A user has connected ');
@@ -79,6 +80,11 @@ board.on("ready", function() {
 		sensordata['lumiere'] = lumiere.value;
 		sensordata['status'] = status;
 		saveMoisture(sensordata);
+		if(i%5==0) {
+			request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
+			i=0;
+		}
+		i = i+1;
 	});
 	
 });
