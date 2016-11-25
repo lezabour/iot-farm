@@ -35,17 +35,11 @@ var com = require("serialport");
 // configuration files
 
 // app parameters
-
-
 var five = require("johnny-five") , board, servo;
 var moisture,sensordata,status,lumiere ="";
 
+module.exports.app = app;
 
-
-var i=0;
-// Robot constants 
-board = new five.Board();
-console.log('Serveur is UP');
 
 
 var mysql = _mysql.createConnection({
@@ -59,7 +53,7 @@ var mysql = _mysql.createConnection({
 mysql.connect();
 
 
-
+board = new five.Board();
 
 board.on("ready", function() {
 	console.log("Arduino Board Connected");
@@ -72,29 +66,9 @@ board.on("ready", function() {
 		pin: "A1",
 	});
 	
-	var lumiereval = lumiere.value;
-	//On fait la boucle d'initialisation
-	if(moisture.value > 500) {
-		status = 'Sec';
-	} else {
-		status = 'Humide';
-	}
-	setTimeout(function() {
-		var datenow = new Date().toLocaleString();
-		var heurenow = new Date().toLocaleTimeString();
-		console.log("Date : "+datenow+ " - Moisture: "+moisture.value+ " - status :"+ status+ " - lumiere :"+ lumiere.value);
-		var sensordata ={};
-		sensordata['date'] = datenow; 
-		sensordata['moisture'] = moisture.value;
-		sensordata['lumiere'] = lumiere.value;
-		sensordata['status'] = status;
-		saveMoisture(sensordata);
-		
-		}, 5000)
+	var cpt=0;
 	
-	
-	//On boucle toutes les 5min pour enregistrer les donner
-	this.loop(300000, function() {
+	setInterval(function() {
 		if(moisture.value > 500) {
 			status = 'Sec';
 		} else {
@@ -108,14 +82,19 @@ board.on("ready", function() {
 		sensordata['lumiere'] = lumiere.value;
 		sensordata['status'] = status;
 		saveMoisture(sensordata);
-		if(i%5==0) {
+		if(cpt%5==0) {
 			//request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
-			i=0;
+			cpt=0;
 		}
-		i = i+1;
+		cpt = cpt+1;
 		
-	});
+		}, 
+	300000);
 	
+	//On boucle toutes les 5min pour enregistrer les donner
+	/*this.loop(300000, function() {});
+	*/
+	console.log("fin board rdy");
 	
 });
 
@@ -123,7 +102,7 @@ board.on("ready", function() {
 //////////////////////////////////////////////////////////
 //Centre de reception des messages après la connexion
 //////////////////////////////////////////////////////////
-module.exports.app = app;
+
 io.on('connection', function (socket) {
 		socket = socket;
 		 	console.log('Connection');  
