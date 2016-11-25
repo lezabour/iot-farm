@@ -1,28 +1,22 @@
 /**
  * Created by Elie on 23/11/2016.
  */
-
+var HOST = 'localhost';
+var PORT = 3306;
+var MYSQL_USER = 'root';
+var MYSQL_PASS = 'clic2clic';
+var DATABASE = 'rpi';
+var TABLE = 'sensor';
 // modules
 var express = require('express')
   , http = require('http')
   , morgan = require('morgan');
 var request = require('request');
-var fs = require('file-system');
-//Communication Python Node Shell
-var PythonShell = require('python-shell');
-var _mysql = require('mysql');
-//Communication Raspberry-Arduino via SerialPort
-var com = require("serialport");
-// configuration files
 var configServer = require('./lib/config/server');
-// app parameters
 var app = express();
 app.set('port', configServer.httpPort);
 app.use(express.static(configServer.staticFolder));
 app.use(morgan('dev'));
-var five = require("johnny-five") , board, servo;
-var moisture,sensordata,status,lumiere ="";
-
 // server index - //Declaration des chemins d'acces
 require('./lib/routes').serveIndex(app, configServer.staticFolder);
 
@@ -31,12 +25,44 @@ var server = http.createServer(app);
 server.listen(app.get('port'), function () {
 	console.log('Serveur: HTTP server listening on port ' + app.get('port'));
 });
+var io = require('socket.io')(server);
+var fs = require('file-system');
+//Communication Python Node Shell
+var PythonShell = require('python-shell');
+var _mysql = require('mysql');
+//Communication Raspberry-Arduino via SerialPort
+var com = require("serialport");
+// configuration files
+
+// app parameters
+
+
+var five = require("johnny-five") , board, servo;
+var moisture,sensordata,status,lumiere ="";
+
+
+
 var i=0;
 // Robot constants 
 board = new five.Board();
-console.log('Serveur: A user has connected ');
+console.log('Serveur is UP');
+
+
+var mysql = _mysql.createConnection({
+	    host: HOST,
+	    port: PORT,
+	    user: MYSQL_USER,
+	    password: MYSQL_PASS,
+	    database : DATABASE
+	});
+
+mysql.connect();
+
+
+
+
 board.on("ready", function() {
-	console.log("Connected");
+	console.log("Arduino Board Connected");
 	
 	moisture = new five.Sensor({
 		pin: "A0",
@@ -53,16 +79,19 @@ board.on("ready", function() {
 	} else {
 		status = 'Humide';
 	}
+	setTimeout(function() {
+		var datenow = new Date().toLocaleString();
+		var heurenow = new Date().toLocaleTimeString();
+		console.log("Date : "+datenow+ " - Moisture: "+moisture.value+ " - status :"+ status+ " - lumiere :"+ lumiere.value);
+		var sensordata ={};
+		sensordata['date'] = datenow; 
+		sensordata['moisture'] = moisture.value;
+		sensordata['lumiere'] = lumiere.value;
+		sensordata['status'] = status;
+		saveMoisture(sensordata);
+		
+		}, 5000)
 	
-	var datenow = new Date().toLocaleString();
-	var heurenow = new Date().toLocaleTimeString();
-	console.log("Date : "+datenow+ " - Moisture: "+moisture.value+ " - status :"+ status+ " - lumiere :"+ lumiere.value);
-	var sensordata ={};
-	sensordata['date'] = datenow; 
-	sensordata['moisture'] = moisture.value;
-	sensordata['lumiere'] = lumiere.value;
-	sensordata['status'] = status;
-	saveMoisture(sensordata);
 	
 	//On boucle toutes les 5min pour enregistrer les donner
 	this.loop(300000, function() {
@@ -73,7 +102,6 @@ board.on("ready", function() {
 		}
 		var datenow = new Date().toLocaleString();
 		var heurenow = new Date().toLocaleTimeString();
-		console.log("Date : "+datenow+ " - Moisture: "+moisture.value+ " - status :"+ status+ " - lumiere :"+ lumiere.value);
 		sensordata = {};
 		sensordata['date'] = datenow; 
 		sensordata['moisture'] = moisture.value;
@@ -81,19 +109,31 @@ board.on("ready", function() {
 		sensordata['status'] = status;
 		saveMoisture(sensordata);
 		if(i%5==0) {
-			request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
+			//request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
 			i=0;
 		}
 		i = i+1;
+		
 	});
 	
+	
 });
-	  
+
+
 //////////////////////////////////////////////////////////
 //Centre de reception des messages après la connexion
 //////////////////////////////////////////////////////////
 module.exports.app = app;
-
+io.on('connection', function (socket) {
+		socket = socket;
+		 	console.log('Connection');  
+		 	socket.emit('humidity-sensor', function (data) {
+		    	//getMoistureData(socket);
+		  	});
+			socket.on('get-humidity-sensor', function (data) {
+		    //	getMoistureData(socket);
+		  	})
+}); //Fin io.on
 /*
 	Recupere les infos du sensor, et les mets en forme
 */
@@ -102,30 +142,98 @@ module.exports.app = app;
 	Ajoute les infos sur sensor dans la Base	
 */
 function saveMoisture(data) {
-
-	var HOST = 'localhost';
-	var PORT = 3306;
-	var MYSQL_USER = 'root';
-	var MYSQL_PASS = 'clic2clic';
-	var DATABASE = 'rpi';
-	var TABLE = 'sensor';
-	var random=Math.random() * (100 - 0) + 0;
-	var mysql = _mysql.createConnection({
-	    host: HOST,
-	    port: PORT,
-	    user: MYSQL_USER,
-	    password: MYSQL_PASS,
-	});
 	jsondata = JSON.stringify(data);
-	mysql.query('use ' + DATABASE);
+	
+	
+	console.log(jsondata);
 	mysql.query("INSERT INTO "+TABLE+" (id,date,data,status) VALUES ('','"+data['date']+"','"+jsondata+"','"+data['status']+"')");
 	console.log('Save moisture OK');
-  	/*serialport.on('open', function(){ 
-	  	serialport.on('data', function(data){   
-    console.log(''+data); 
-	});*/
+		
+} 
 
-
+function getMoistureData(socket) {
+	console.log('Debut Get data');
+	
+	var query = mysql.query("SELECT * FROM "+TABLE);
+	
+	query.on('error', function(err) {
+	    throw err;
+	});
+	 
+	 
+	query.on('result', function(row) {
+	    console.log(row.data);
+	    socket.emit('humidity-sensor', { data: row.data });
+	});
+	
+	
+	console.log('Get data OK');
 } 
 
 
+
+
+
+
+
+
+//Exemple callback
+function doMainStuff() {
+  //do all your stuff
+  lastAsyncThing(function (error) {
+    //When your final async thing is done, start the timer
+    if (error) {
+        //log error. Maybe exit if it's irrecoverable.
+    }
+    setTimeout(doMainStuff, 10 * 1000);
+  });
+}
+
+//when your program starts, do stuff right away.
+//doMainStuff();
+
+//OU
+/*
+function sendEmail() {
+  email.send(to, headers, body);
+  setTimeout(sendEmail, 10*1000);
+}
+setTimeout(sendEmail, 10*1000);*/
+
+
+//OU
+/*
+	 // v--------place your code in a function
+function get_request() {
+    $.get("request2.php", function(vystup){
+       if (vystup !== ""){
+          $("#prompt").html(vystup)
+                      .animate({"top": "+=25px"}, 500)
+                      .delay(2000)
+                      .animate({"top": "-=25px"}, 500)
+                      .delay(500)
+                      .html("");
+        }
+        setTimeout( get_request, 4000 ); // <-- when you ge a response, call it
+                                         //        again after a 4 second delay
+    });
+}
+
+get_request();  // <-- start it off
+*/
+
+//OU
+/*
+// declare your variable for the setInterval so that you can clear it later
+var myInterval; 
+
+// set your interval
+myInterval = setInterval(whichFunction,4000);
+
+whichFunction{
+    // function code goes here
+}
+
+// this code clears your interval (myInterval)
+window.clearInterval(myInterval); 
+*/
