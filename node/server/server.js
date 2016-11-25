@@ -1,12 +1,20 @@
 /**
  * Created by Elie on 23/11/2016.
  */
-var HOST = 'localhost';
+/*var HOST = 'localhost';
 var PORT = 3306;
 var MYSQL_USER = 'root';
 var MYSQL_PASS = 'clic2clic';
 var DATABASE = 'rpi';
-var TABLE = 'sensor';
+var TABLE = 'sensor';*/
+var HOST = 'mysql-robotperso.alwaysdata.net';
+var PORT = 3306;
+var MYSQL_USER = '130280_iotfarm';
+var MYSQL_PASS = 'test12345';
+var DATABASE = 'robotperso_iotfarm';
+var TABLE = 'sensors';
+
+
 // modules
 var express = require('express')
   , http = require('http')
@@ -67,6 +75,25 @@ board.on("ready", function() {
 	});
 	
 	var cpt=0;
+	setTimeout(function() {
+		if(moisture.value > 500) {
+			status = 'Sec';
+		} else {
+			status = 'Humide';
+		}
+		var datenow = new Date().toLocaleString();
+		var heurenow = new Date().toLocaleTimeString();
+		sensordata = {};
+		sensordata['date'] = datenow; 
+		sensordata['moisture'] = moisture.value;
+		sensordata['lumiere'] = lumiere.value;
+		sensordata['status'] = status;
+		saveMoisture(sensordata);
+		request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
+		cpt = cpt+1;
+		
+		}, 
+	2000);
 	
 	setInterval(function() {
 		if(moisture.value > 500) {
@@ -82,8 +109,8 @@ board.on("ready", function() {
 		sensordata['lumiere'] = lumiere.value;
 		sensordata['status'] = status;
 		saveMoisture(sensordata);
-		if(cpt%5==0) {
-			//request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
+		if(cpt%2==0) {
+			request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
 			cpt=0;
 		}
 		cpt = cpt+1;
@@ -94,7 +121,15 @@ board.on("ready", function() {
 	//On boucle toutes les 5min pour enregistrer les donner
 	/*this.loop(300000, function() {});
 	*/
-	console.log("fin board rdy");
+	io.on('connection', function (socket) {
+	 	console.log('Connection');  
+	 	
+		socket.on('get-humidity-sensor', function (data) {
+			//socket.emit('humidity-sensor', function (data) {
+	    		getMoistureData(socket);
+	  		//});
+	  	});
+	}); //Fin io.on
 	
 });
 
@@ -103,16 +138,7 @@ board.on("ready", function() {
 //Centre de reception des messages après la connexion
 //////////////////////////////////////////////////////////
 
-io.on('connection', function (socket) {
-		socket = socket;
-		 	console.log('Connection');  
-		 	socket.emit('humidity-sensor', function (data) {
-		    	//getMoistureData(socket);
-		  	});
-			socket.on('get-humidity-sensor', function (data) {
-		    //	getMoistureData(socket);
-		  	})
-}); //Fin io.on
+
 /*
 	Recupere les infos du sensor, et les mets en forme
 */
@@ -142,6 +168,7 @@ function getMoistureData(socket) {
 	 
 	query.on('result', function(row) {
 	    console.log(row.data);
+	   // return row.data;
 	    socket.emit('humidity-sensor', { data: row.data });
 	});
 	
