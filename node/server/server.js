@@ -95,11 +95,16 @@ board.on("ready", function() {
 		}, 
 	2000);
 	
-	setInterval(function() {
+	setInterval((function() {
 		if(moisture.value > 500) {
 			status = 'Sec';
 		} else {
 			status = 'Humide';
+		}
+		if(lumiere.value > 500) {
+			status += ' - Lumineux';
+		} else {
+			status += ' - Sombre';
 		}
 		var datenow = new Date().toLocaleString();
 		var heurenow = new Date().toLocaleTimeString();
@@ -115,7 +120,8 @@ board.on("ready", function() {
 		}
 		cpt = cpt+1;
 		
-		}, 
+		} 
+		), 
 	300000);
 	
 	//On boucle toutes les 5min pour enregistrer les donner
@@ -125,10 +131,15 @@ board.on("ready", function() {
 	 	console.log('Connection');  
 	 	
 		socket.on('get-humidity-sensor', function (data) {
-			//socket.emit('humidity-sensor', function (data) {
 	    		getMoistureData(socket);
-	  		//});
 	  	});
+	  	socket.on('get-humidity-sensor-update', function (data) {
+		  	console.log('Demande update'); 
+		  	updateMoistureData(socket);
+	  	});
+	  	
+	  	//setInterval(updateMoistureData(socket), 10000);
+	  	
 	}); //Fin io.on
 	
 });
@@ -167,8 +178,6 @@ function getMoistureData(socket) {
 	 
 	 
 	query.on('result', function(row) {
-	    console.log(row.data);
-	   // return row.data;
 	    socket.emit('humidity-sensor', { data: row.data });
 	});
 	
@@ -176,7 +185,23 @@ function getMoistureData(socket) {
 	console.log('Get data OK');
 } 
 
-
+function updateMoistureData(socket) {
+	console.log('Debut UPDATE');
+	
+	var queryUpdate= mysql.query("SELECT * from "+TABLE+" order by ID DESC limit 0,1");
+	
+	queryUpdate.on('error', function(err) {
+	    throw err;
+	});
+	 
+	queryUpdate.on('result', function(row2) {
+			console.log('Update emit ->'+row2.data);
+			socket.emit('humidity-sensor-update', { data: row2.data });
+	});
+	
+	
+	console.log('FIN UPDATE');
+}
 
 
 

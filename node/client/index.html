@@ -16,7 +16,7 @@
 		<div id="refresh">Refresh</div>
 		<div id="container" style="height: 400px; min-width: 310px"></div>
 		<script language="JavaScript">
-		
+			
 			$(document).ready(function() {
 				console.log('HTML: Ready');
 				var j=0;
@@ -26,51 +26,57 @@
 	            socket = io.connect(address);
 	            var lesdatas = [];
 	            socket.emit('get-humidity-sensor');
-	            
+	            var requestData, chart1;
 				socket.on("humidity-sensor", function(data) {
-	            	 console.log(data.data);
+	            	console.log(data.data);
 	            	lesdatas[j] = jQuery.parseJSON(data.data);
-	            	
 	            	j++;
 				});
 				
+				socket.on("humidity-sensor-update", function(data) {
+					console.log('Update received- ' +data.data);
+					data = jQuery.parseJSON(data.data);
+					console.log('Update received JSON- ' +data);
+					var x = (new Date(data['date'])).getTime();
+					var    y = data['moisture'];
+					chart1.series[0].addPoint([x, y], true, true);
+					console.log('x:'+x +'- y:'+ y);
+				});
+				
+				
 				$('#refresh').on('mousedown', function(){
 		            console.log("emission de refresh");
-		            socket.emit('get-humidity-sensor');
+		            socket.emit('get-humidity-sensor-update');
 		        });
 		        
-		        setTimeout(function () {
+		        setTimeout(function (socket) {
 				    Highcharts.setOptions({
 				        global: {
 				            useUTC: false
 				        }
 				    });
 				    // Create the chart
-				    Highcharts.stockChart('container', {
-				        chart: {
-				            events: {
-				                /*load: function () {
-				
-				                    // set up the updating of the chart each second
-				                    var series = this.series[0];
-				                    setInterval(function () {
-				                        var x = (new Date()).getTime(), // current time
-				                            y = Math.round(Math.random() * 100);
-				                        series.addPoint([x, y], true, true);
-				                    }, 1000);
-				                }*/
-				            }
-				        },
+				     chart1 = Highcharts.stockChart('container', {
+				        
 				
 				        rangeSelector: {
 				            buttons: [{
-				                count: 1,
+				                count: 12,
 				                type: 'hour',
-				                text: '1H'
+				                text: '12H'
 				            }, {
-				                count: 30,
-				                type: 'minute',
-				                text: '30M'
+				                count: 1,
+				                type: 'day',
+				                text: '1D'
+				            },
+				            {
+				                count: 1,
+				                type: 'week',
+				                text: '1W'
+				            },{
+				                count: 1,
+				                type: 'month',
+				                text: '1M'
 				            }, {
 				                type: 'all',
 				                text: 'All'
@@ -88,20 +94,20 @@
 				        },
 				
 				        series: [{
-				            name: 'Random data',
+				            name: 'Humidity Datas',
 				            data: (function () {
 				                // generate an array of random data
 				                var data = [],
 				                    time = (new Date()).getTime(),
 				                    i;
-				                console.log("dedans"+lesdatas.length);   
+				                console.log("total row"+lesdatas.length);   
 				                for (i = 0; i < lesdatas.length; i = i + 1) {
 				                    data.push([
 				                        time = (new Date(lesdatas[i]['date'])).getTime(),
 				                        lesdatas[i]['moisture']
 				                        
 				                    ]);
-				                    console.log("---> i: "+i+" - "+lesdatas[i]['moisture']+ " - "+ time);
+				                    //console.log("---> i: "+i+" - "+lesdatas[i]['moisture']+ " - "+ time);
 				                }
 				                return data;
 				            }())
@@ -111,8 +117,10 @@
 				}
 		        , 1000);
 				
-				
-		        
+				//On lance le refresh
+		        setInterval(function() {
+					socket.emit("get-humidity-sensor-update"); 
+					},30000);
 		        
 		        
 			});
