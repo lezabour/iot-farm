@@ -27,7 +27,8 @@ app.use(express.static(configServer.staticFolder));
 app.use(morgan('dev'));
 // server index - //Declaration des chemins d'acces
 require('./lib/routes').serveIndex(app, configServer.staticFolder);
-
+	var sys = require('sys');
+	var exec = require('child_process').exec;
 // HTTP server
 var server = http.createServer(app);
 server.listen(app.get('port'), function () {
@@ -62,7 +63,7 @@ mysql.connect();
 
 
 board = new five.Board();
-
+lancer_camera();
 board.on("ready", function() {
 	console.log("Arduino Board Connected");
 	
@@ -73,13 +74,18 @@ board.on("ready", function() {
 	lumiere = new five.Sensor({
 		pin: "A1",
 	});
-	
+
 	var cpt=0;
 	setTimeout(function() {
 		if(moisture.value > 500) {
 			status = 'Sec';
 		} else {
 			status = 'Humide';
+		}
+		if(lumiere.value > 500) {
+			status += ' - Lumineux';
+		} else {
+			status += ' - Sombre';
 		}
 		var datenow = new Date().toLocaleString();
 		var heurenow = new Date().toLocaleTimeString();
@@ -93,7 +99,7 @@ board.on("ready", function() {
 		cpt = cpt+1;
 		
 		}, 
-	2000);
+	5000);
 	
 	setInterval((function() {
 		if(moisture.value > 500) {
@@ -204,7 +210,35 @@ function updateMoistureData(socket) {
 }
 
 
+function lancer_camera() {
+	console.log("lancer camera");
+	
+	exec('kill $(pgrep mjpg_streamer) > /dev/null 2>&1',function puts(error, stdout, stderr) { 
+		sys.puts(stdout);
+		setTimeout(function() {
+			child = exec("sh webcam.sh", function (error, stdout, stderr) {
+				sys.print('stdout: ' + stdout);
+				sys.print('stderr: ' + stderr);
+				if (error !== null) {
+					console.log('exec error: ' + error);
+				}
+				console.log("camera OK");
+			});
+			}
+		, 1000);
+	});
+	
+	
 
+	
+}
+
+function arret_camera() {
+	console.log("stoper camera");
+	function puts(error, stdout, stderr) { sys.puts(stdout) }
+	exec('kill $(pgrep mjpg_streamer) > /dev/null 2>&1',puts);
+	
+}
 
 
 
