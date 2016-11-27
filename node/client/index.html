@@ -1,129 +1,86 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>IOT-FARM</title>
-		<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-		<script src="https://code.highcharts.com/stock/highstock.js"></script>
-		<script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
-		
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="apple-mobile-web-app-capable" content="yes"/>
+	<meta name="mobile-web-app-capable" content="yes"/>
+	<link rel="icon" href="favicon.png">
+	<meta name="msapplication-TileColor" content="#fff">
+	<meta name="msapplication-TileImage" content="favicon.png">
+	<link rel="apple-touch-icon" sizes="180x180" href="favicon180x180.png">
+	<title>IOT FARM</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/style.css" />
+	<script src="https://code.highcharts.com/stock/highstock.js"></script>
+	<script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+  </head>
 
-	</head>
+  <body>
 
-	<body class="skin-blue sidebar-collapse sidebar-mini">
-		<script src="https://code.jquery.com/jquery-2.2.4.min.js" ></script>
-		<script src="https://cdn.socket.io/socket.io-1.0.0.js"></script>
-		<div id="refresh">Refresh</div>
-		<div id="container" style="height: 400px; min-width: 310px"></div>
-		<script language="JavaScript">
+    <div id="wrap" class="container"> 
+
+      <div class="row">
+		<div class="col-sm-6 col-sm-offset-3">
+			<div class="pull-left">
+				<div class="btn-group" data-toggle="buttons">
+					<label class="btn btn-primary" data-toggle="tooltip" data-placement="bottom" title="480p">
+						<input type="radio" name="quality-480p" id="quality-480p" autocomplete="off"/><span>480p</span>
+					</label>
+					<label class="btn btn-primary" data-toggle="tooltip" data-placement="bottom" title="720p">
+						<input type="radio" name="quality-720p" id="quality-720p" autocomplete="off"/><span>720p</span>
+					</label>
+					<label class="btn btn-primary" data-toggle="tooltip" data-placement="bottom" title="1080p">
+						<input type="radio" name="quality-1080p" id="quality-1080p" autocomplete="off"/><span>1080p</span>
+					</label>
+				</div>	
+				<label class="btn btn-default" data-toggle="tooltip" data-placement="bottom" title="Alert Mode">
+					<span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span> Alert Mode &nbsp;
+					<input type="checkbox" id="alert-mode"/> 
+				</label>	
+			</div>
+			<div class="dropdown pull-left clients-wrap" data-toggle="tooltip" data-placement="left" title="Connected Clients">
+				<a href="#" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+					<span class="glyphicon glyphicon-user" aria-hidden="true"></span> &nbsp;
+					<span class="badge" id="clients-count">0</span>
+					<span class="caret"></span>
+				</a>
+				<ul class="dropdown-menu" id="clients">	</ul>
+			</div>
+		</div>
+      </div>
+
+
+      <div class="row">
+		<div class="col-sm-12" id="image-container">
+			<img src="#" id="image-preloader" />
+			<img src="loading.png" class="img-responsive" id="canvas-video" /> <!-- VIDEOS STREAM -->
+		</div>		
+      </div>
+      <div class="row">
+		<div class="col-sm-12" id="image-container">
+			<div id="container" style="height: 400px; min-width: 310px"></div><!-- GRAPHIQUE TEMPERATURE -->
+		</div>		
+      </div>
+      
+      <div class="row">		
+		<div id="timestamp" class="col-sm-12">
 			
-			$(document).ready(function() {
-				console.log('HTML: Ready');
-				var j=0;
-				var address = "192.168.0.21:5001"
-	            console.log('HTML: attempting to connect to robot');
-	            console.log('@' + address);
-	            socket = io.connect(address);
-	            var lesdatas = [];
-	            socket.emit('get-humidity-sensor');
-	            var requestData, chart1;
-				socket.on("humidity-sensor", function(data) {
-	            	console.log(data.data);
-	            	lesdatas[j] = jQuery.parseJSON(data.data);
-	            	j++;
-				});
-				
-				socket.on("humidity-sensor-update", function(data) {
-					console.log('Update received- ' +data.data);
-					data = jQuery.parseJSON(data.data);
-					console.log('Update received JSON- ' +data);
-					var x = (new Date(data['date'])).getTime();
-					var    y = data['moisture'];
-					chart1.series[0].addPoint([x, y], true, true);
-					console.log('x:'+x +'- y:'+ y);
-				});
-				
-				
-				$('#refresh').on('mousedown', function(){
-		            console.log("emission de refresh");
-		            socket.emit('get-humidity-sensor-update');
-		        });
-		        
-		        setTimeout(function (socket) {
-				    Highcharts.setOptions({
-				        global: {
-				            useUTC: false
-				        }
-				    });
-				    // Create the chart
-				     chart1 = Highcharts.stockChart('container', {
-				        
-				
-				        rangeSelector: {
-				            buttons: [{
-				                count: 12,
-				                type: 'hour',
-				                text: '12H'
-				            }, {
-				                count: 1,
-				                type: 'day',
-				                text: '1D'
-				            },
-				            {
-				                count: 1,
-				                type: 'week',
-				                text: '1W'
-				            },{
-				                count: 1,
-				                type: 'month',
-				                text: '1M'
-				            }, {
-				                type: 'all',
-				                text: 'All'
-				            }],
-				            inputEnabled: false,
-				            selected: 0
-				        },
-				
-				        title: {
-				            text: 'Live random data'
-				        },
-				
-				        exporting: {
-				            enabled: false
-				        },
-				
-				        series: [{
-				            name: 'Humidity Datas',
-				            data: (function () {
-				                // generate an array of random data
-				                var data = [],
-				                    time = (new Date()).getTime(),
-				                    i;
-				                console.log("total row"+lesdatas.length);   
-				                for (i = 0; i < lesdatas.length; i = i + 1) {
-				                    data.push([
-				                        time = (new Date(lesdatas[i]['date'])).getTime(),
-				                        lesdatas[i]['moisture']
-				                        
-				                    ]);
-				                    //console.log("---> i: "+i+" - "+lesdatas[i]['moisture']+ " - "+ time);
-				                }
-				                return data;
-				            }())
-				        }]
-				    });
-				
-				}
-		        , 1000);
-				
-				//On lance le refresh
-		        setInterval(function() {
-					socket.emit("get-humidity-sensor-update"); 
-					},30000);
-		        
-		        
-			});
-		</script>
-	</body>
+		</div>
+      </div>
+	  
+
+      <footer class="footer">
+        <p><a href="https://github.com/orosandrei" target="_blank">github.com/lezabour</a></p>
+      </footer>
+
+    </div> <!-- /container -->
+	
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="js/script.js"></script>	
+
+  </body>
 </html>
