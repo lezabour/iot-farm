@@ -13,6 +13,10 @@
 	<title>IOT FARM</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
 	<link rel="stylesheet" href="css/style.css" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.4/css/bootstrap-datepicker.css" />
+	
+
+	
 	<script src="https://code.highcharts.com/stock/highstock.js"></script>
 	<script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
   </head>
@@ -41,29 +45,53 @@
 				</label>	
 			</div>
 			<div class="dropdown pull-left clients-wrap" data-toggle="tooltip" data-placement="left" title="Connected Clients">
-				<a href="#" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+				<button href="#" class="btn btn-primary" >
 					<span class="glyphicon glyphicon-user" aria-hidden="true"></span> &nbsp;
 					<span class="badge" id="clients-count">0</span>
-					<span class="caret"></span>
-				</a>
-				<ul class="dropdown-menu" id="clients">	</ul>
+				</button>
 			</div>
 		</div>
       </div>
 
 
       <div class="row">
-		<div class="col-sm-12" id="image-container">
+		<div class="col-sm-8" id="image-container">
 			<img src="#" id="image-preloader" />
 			<img src="loading.png" class="img-responsive" id="canvas-video" /> <!-- VIDEOS STREAM -->
-		</div>		
+		</div>	
+		<div class="col-sm-4" id="infos-container">
+			<div id="liste-infos">
+				
+			</div> <!-- VIDEOS STREAM -->
+		</div>	
       </div>
-      <div class="row">
-		<div class="col-sm-12" id="image-container">
-			<div id="container" style="height: 400px; min-width: 310px"></div><!-- GRAPHIQUE TEMPERATURE -->
+      
+      
+      <div class="row"><!-- debut champs ajouter infos -->
+		<div class="col-md-12" style="text-align: center;">
+			<button class="btn btn-primary" id="ajout-infos">Ajouter une info</button>
+			<div class="row" id="form-infos"><!-- debut champs masquer -->
+				<div class="col-sm-12">
+					<input data-provide="datepicker" id="date-infos" placeholder="Date.."><br/>
+					<input type="text" id="titre-infos" placeholder="titre infos" size="50"><br/>
+					<textarea id="text-infos" placeholder="Commentaire..." rows="4" cols="48"></textarea><br/>
+					<a class="btn btn-primary" id="valider-infos">Ajouter</a>
+				</div>
+			</div>
+			<div class="row" id="confirmation-infos"><!-- debut champs masquer -->
+				<div class="col-sm-12">
+					<p> info ajouté </p>
+				</div>
+			</div>
 		</div>		
       </div>
       
+      <div class="row">
+		<div class="col-sm-12" id="image-container">
+			<div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+
+		</div>		
+      </div>
       <div class="row">		
 		<div id="timestamp" class="col-sm-12">
 			
@@ -72,7 +100,7 @@
 	  
 
       <footer class="footer">
-        <p><a href="https://github.com/orosandrei" target="_blank">github.com/lezabour</a></p>
+        <p><a href="" target="_blank"></a></p>
       </footer>
 
     </div> <!-- /container -->
@@ -80,7 +108,8 @@
 	<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
 	<script type="text/javascript" src="js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="socket.io/socket.io.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.4/js/bootstrap-datepicker.js"></script>
 	<script type="text/javascript" src="js/script.js"></script>	
-
+	
   </body>
 </html>
