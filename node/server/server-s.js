@@ -15,6 +15,7 @@ var DATABASE = 'robotperso_iotfarm';
 var TABLE = 'sensors';
 
 
+
 // modules
 var express = require('express')
   , http = require('http')
@@ -25,14 +26,18 @@ var app = express();
 app.set('port', configServer.httpPort);
 app.use(express.static(configServer.staticFolder));
 app.use(morgan('dev'));
+
 // server index - //Declaration des chemins d'acces
-require('./lib/routes').serveIndex(app, configServer.staticFolder);
+//require('./lib/routes').serveIndex(app, configServer.staticFolder);
 	var sys = require('sys');
 	var exec = require('child_process').exec;
 // HTTP server
 var server = http.createServer(app);
+
+
 server.listen(app.get('port'), function () {
 	console.log('Serveur: HTTP server listening on port ' + app.get('port'));
+
 });
 var io = require('socket.io')(server);
 var count = 0
@@ -45,11 +50,11 @@ var _mysql = require('mysql');
 var com = require("serialport");
 // configuration files
 
+  
+
 // app parameters
 var five = require("johnny-five") , board, servo;
 var moisture,sensordata,status,lumiere ="";
-
-module.exports.app = app;
 
 
 
@@ -329,6 +334,27 @@ function mysql_real_escape_string(str) {
     });
 }
 
+
+
+
+/* RANGE MAPPING CONVERSION NUMBER */
+/*
+function convertToRange(value, srcRange, dstRange){
+  // value is outside source range return
+  if (value < srcRange[0] || value > srcRange[1]){
+    return NaN; 
+  }
+
+  var srcMax = srcRange[1] - srcRange[0],
+      dstMax = dstRange[1] - dstRange[0],
+      adjValue = value - srcRange[0];
+
+  return (adjValue * dstMax / srcMax) + dstRange[0];
+
+}
+
+Use like convertToRange(20,[10,50],[5,10]);
+*/
 //Exemple callback
 function doMainStuff() {
   //do all your stuff
