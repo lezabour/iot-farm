@@ -1,5 +1,7 @@
 /**
  * Created by Elie on 23/11/2016.
+ Serveur Propre, avec uniquement les elements necessaire
+ Gere 2 sensor d'humidité + 1 sensor de lumiere 
  */
 /*var HOST = 'localhost';
 var PORT = 3306;
@@ -140,10 +142,8 @@ board.on("ready", function() {
 		
 	}), 300000);
 	
-	//On boucle toutes les 5min pour enregistrer les donner
-	/*this.loop(300000, function() {});
-	*/
 	io.on('connection', function (socket) {
+		console.log('a user connected');
 	 	console.log('Connection');  
 	 	count++;
 	 	socket.emit('number-connected', { count: count });
@@ -329,82 +329,3 @@ function mysql_real_escape_string(str) {
 
 
 
-
-/* RANGE MAPPING CONVERSION NUMBER */
-/*
-function convertToRange(value, srcRange, dstRange){
-  // value is outside source range return
-  if (value < srcRange[0] || value > srcRange[1]){
-    return NaN; 
-  }
-
-  var srcMax = srcRange[1] - srcRange[0],
-      dstMax = dstRange[1] - dstRange[0],
-      adjValue = value - srcRange[0];
-
-  return (adjValue * dstMax / srcMax) + dstRange[0];
-
-}
-
-Use like convertToRange(20,[10,50],[5,10]);
-*/
-//Exemple callback
-function doMainStuff() {
-  //do all your stuff
-  lastAsyncThing(function (error) {
-    //When your final async thing is done, start the timer
-    if (error) {
-        //log error. Maybe exit if it's irrecoverable.
-    }
-    setTimeout(doMainStuff, 10 * 1000);
-  });
-}
-
-//when your program starts, do stuff right away.
-//doMainStuff();
-
-//OU
-/*
-function sendEmail() {
-  email.send(to, headers, body);
-  setTimeout(sendEmail, 10*1000);
-}
-setTimeout(sendEmail, 10*1000);*/
-
-
-//OU
-/*
-	 // v--------place your code in a function
-function get_request() {
-    $.get("request2.php", function(vystup){
-       if (vystup !== ""){
-          $("#prompt").html(vystup)
-                      .animate({"top": "+=25px"}, 500)
-                      .delay(2000)
-                      .animate({"top": "-=25px"}, 500)
-                      .delay(500)
-                      .html("");
-        }
-        setTimeout( get_request, 4000 ); // <-- when you ge a response, call it
-                                         //        again after a 4 second delay
-    });
-}
-
-get_request();  // <-- start it off
-*/
-
-//OU
-/*
-// declare your variable for the setInterval so that you can clear it later
-var myInterval; 
-
-// set your interval
-myInterval = setInterval(whichFunction,4000);
-
-whichFunction{
-    // function code goes here
-}
-
-// this code clears your interval (myInterval)
-window.clearInterval(myInterval); 
-*/
