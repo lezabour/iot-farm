@@ -17,38 +17,33 @@ var TABLE = 'sensors';
 
 
 // modules
-var express = require('express')
-  , http = require('http')
-  , morgan = require('morgan');
-var request = require('request');
-var configServer = require('./lib/config/server');
-var app = express();
-app.set('port', configServer.httpPort);
-app.use(express.static(configServer.staticFolder));
-app.use(morgan('dev'));
-
-// server index - //Declaration des chemins d'acces
-//require('./lib/routes').serveIndex(app, configServer.staticFolder);
-	var sys = require('sys');
-	var exec = require('child_process').exec;
-// HTTP server
-var server = http.createServer(app);
 
 
-server.listen(app.get('port'), function () {
-	console.log('Serveur: HTTP server listening on port ' + app.get('port'));
+var app = require('express')();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
 
+app.get('/', function(req, res){
+  res.sendfile('index.html');
 });
-var io = require('socket.io')(server);
+
+io.on('connection', function(socket){
+  console.log('a user connected');
+});
+
+http.listen(5001, function(){
+  console.log('listening on *:5001');
+});
+
+
+var sys = require('sys');
+var exec = require('child_process').exec;
+var request = require('request');
+
+
 var count = 0
 
 var fs = require('file-system');
-//Communication Python Node Shell
-var PythonShell = require('python-shell');
-var _mysql = require('mysql');
-//Communication Raspberry-Arduino via SerialPort
-var com = require("serialport");
-// configuration files
 
   
 
@@ -58,17 +53,6 @@ var moisture,sensordata,status,lumiere ="";
 
 
 
-var mysql = _mysql.createConnection({
-	    host: HOST,
-	    port: PORT,
-	    user: MYSQL_USER,
-	    password: MYSQL_PASS,
-	    database : DATABASE
-	});
-
-mysql.connect();
-
-
 board = new five.Board();
 lancer_camera();
 board.on("ready", function() {
@@ -76,6 +60,10 @@ board.on("ready", function() {
 	
 	moisture = new five.Sensor({
 		pin: "A0",
+		enabled: true
+	});
+	moisture2 = new five.Sensor({
+		pin: "A2",
 		enabled: true
 	});
 	lumiere = new five.Sensor({
@@ -100,6 +88,7 @@ board.on("ready", function() {
 		sensordata = {};
 		sensordata['date'] = datenow; 
 		sensordata['moisture'] = moisture.value;
+		sensordata['moisture2'] = moisture2.value;
 		sensordata['lumiere'] = lumiere.value;
 		sensordata['status'] = status;
 		saveMoisture(sensordata);
@@ -108,7 +97,7 @@ board.on("ready", function() {
 			console.log('NUIT ');
 		} else {
 			console.log('JOUR ');
-			request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
+			request('http://89.2.170.137:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
 		} 
 		
 		cpt = cpt+1;
@@ -132,6 +121,7 @@ board.on("ready", function() {
 		sensordata = {};
 		sensordata['date'] = datenow; 
 		sensordata['moisture'] = moisture.value;
+		sensordata['moisture2'] = moisture2.value;
 		sensordata['lumiere'] = lumiere.value;
 		sensordata['status'] = status;
 		saveMoisture(sensordata);
@@ -141,7 +131,7 @@ board.on("ready", function() {
 		} else {
 			console.log('JOUR ');
 			if(cpt%2==0) {
-				request('http://192.168.0.21:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
+				request('http://89.2.170.137:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
 				cpt=0;
 			}
 		}
@@ -210,7 +200,7 @@ function saveMoisture(data) {
 	
 	
 	console.log(jsondata);
-	mysql.query("INSERT INTO "+TABLE+" (id,date,data,type) VALUES ('','"+data['date']+"','"+jsondata+"','sensors')");
+	//mysql.query("INSERT INTO "+TABLE+" (id,date,data,type) VALUES ('','"+data['date']+"','"+jsondata+"','sensors')");
 	console.log('Save moisture OK');
 		
 } 
@@ -219,7 +209,7 @@ function getMoistureData(socket) {
 	console.log('Get sensors data');
 	var count = 0;
 	var nb = 0;
-	var query = mysql.query("SELECT count(*) as count FROM sensors where type='sensors' ", function(err, rows, fields)   
+	/*var query = mysql.query("SELECT count(*) as count FROM sensors where type='sensors' ", function(err, rows, fields)   
 	{  
 	  if (err) throw err;  
 	  var stringi =  JSON.stringify(rows[0]);
@@ -233,7 +223,7 @@ function getMoistureData(socket) {
 		  socket.emit('humidity-sensor', { data: rows });
 		});  
 
-	});
+	});*/
 	console.log('OK'); 
 } 
 
@@ -255,16 +245,19 @@ function updateMoistureData(socket) {
 }
 
 function saveInfos(socket,data) {
+	/*
 	data['text'] = mysql_real_escape_string(data['text']);
 	var datajson = JSON.stringify(data);
 	var datenow = new Date().toLocaleString();
 	mysql.query("INSERT INTO "+TABLE+" (id,date,data,type) VALUES ('','"+datenow+"','"+datajson+"','infos')");
 	console.log('Save Infos OK');
 	socket.emit('save-infos-ok');
+	*/
 	
 }
 
 function listeInfos(socket) {
+	/*
 	console.log('GET liste infos');
 		
 	var query = mysql.query("SELECT * FROM sensors where type='infos' order by id DESC limit 0,10", function(err, rows, fields)   
@@ -272,7 +265,7 @@ function listeInfos(socket) {
 	  if (err) throw err;  
 	  socket.emit('liste-infos', { data: rows });
 	  console.log('OK');
-	});  	
+	});  */	
 	
 } 
 
