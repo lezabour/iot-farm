@@ -9,11 +9,11 @@ var MYSQL_USER = 'root';
 var MYSQL_PASS = 'clic2clic';
 var DATABASE = 'rpi';
 var TABLE = 'sensor';*/
-var HOST = 'mysql-robotperso.alwaysdata.net';
+var HOST = '91.134.242.138';
 var PORT = 3306;
-var MYSQL_USER = '130280_iotfarm';
-var MYSQL_PASS = 'test12345';
-var DATABASE = 'robotperso_iotfarm';
+var MYSQL_USER = 'elie';
+var MYSQL_PASS = 'clic2clic55';
+var DATABASE = 'robotperso';
 var TABLE = 'sensors';
 
 
@@ -46,14 +46,22 @@ var request = require('request');
 var count = 0
 
 var fs = require('file-system');
-
+var _mysql = require('mysql');
   
 
 // app parameters
 var five = require("johnny-five") , board, servo;
-var moisture,sensordata,status,lumiere ="";
+var moisture,sensordata,status,lumiere,relay ="";
 
+var mysql = _mysql.createConnection({
+	    host: HOST,
+	    port: PORT,
+	    user: MYSQL_USER,
+	    password: MYSQL_PASS,
+	    database : DATABASE
+	});
 
+mysql.connect();
 
 board = new five.Board();
 lancer_camera();
@@ -71,7 +79,11 @@ board.on("ready", function() {
 	lumiere = new five.Sensor({
 		pin: "A1",
 	});
+	relay =  new five.Relay({
+		pin: 6
+	});
 
+	
 	var cpt=0;
 	setTimeout(function() {
 		if(moisture.value > 500) {
@@ -79,7 +91,7 @@ board.on("ready", function() {
 		} else {
 			status = 'Humide';
 		}
-		if(lumiere.value > 500) {
+		if(lumiere.value < 500) {
 			status += ' - Lumineux';
 		} else {
 			status += ' - Sombre';
@@ -88,11 +100,9 @@ board.on("ready", function() {
 		var heurenow = new Date().toLocaleTimeString();
 		
 		sensordata = {};
-		sensordata['date'] = datenow; 
 		sensordata['moisture'] = moisture.value;
 		sensordata['moisture2'] = moisture2.value;
 		sensordata['lumiere'] = lumiere.value;
-		sensordata['status'] = status;
 		saveMoisture(sensordata);
 		//On ne prend les photos que le jour, lorsqu'il y a de la lumiere car pas de capteur Infra Rouge
 		if(heurenow>'00:45:00' && heurenow<'06:45:00') {
@@ -104,16 +114,16 @@ board.on("ready", function() {
 		
 		cpt = cpt+1;
 		
-		}, 
-	5000);
+	},  5000);
 	
 	setInterval((function() {
+		
 		if(moisture.value > 500) {
 			status = 'Sec';
 		} else {
 			status = 'Humide';
 		}
-		if(lumiere.value > 500) {
+		if(lumiere.value < 500) {
 			status += ' - Lumineux';
 		} else {
 			status += ' - Sombre';
@@ -121,11 +131,11 @@ board.on("ready", function() {
 		var datenow = new Date().toLocaleString();
 		var heurenow = new Date().toLocaleTimeString();
 		sensordata = {};
-		sensordata['date'] = datenow; 
+		//sensordata['date'] = datenow; 
 		sensordata['moisture'] = moisture.value;
 		sensordata['moisture2'] = moisture2.value;
 		sensordata['lumiere'] = lumiere.value;
-		sensordata['status'] = status;
+		//sensordata['status'] = status;
 		saveMoisture(sensordata);
 		if(heurenow>'00:45:00' && heurenow<'06:45:00') {
 			console.log('NUIT ');
@@ -146,10 +156,19 @@ board.on("ready", function() {
 		console.log('a user connected');
 	 	console.log('Connection');  
 	 	count++;
+	 	socket.on('connected', function (data) {
+		 	socket.emit('node-connected'); 
+	 	});
 	 	socket.emit('number-connected', { count: count });
 	 	console.log('count' + count);  
+	 	
+	 	//Envoyer tous les sensors sur demande
+	 	socket.on('get-all-sensors', function (data) {
+	    		sendAllSensors(socket);
+	  	});
+	 	
 		socket.on('get-humidity-sensor', function (data) {
-	    		getMoistureData(socket);
+	    		//getMoistureData(socket);
 	  	});
 	  	socket.on('get-humidity-sensor-update', function (data) {
 		  	console.log('Demande update'); 
@@ -164,6 +183,18 @@ board.on("ready", function() {
 	  	socket.on('liste-infos', function (data) {
 		  	console.log('Demande de liste infos'); 
 		  	listeInfos(socket);
+	  	});
+	  	socket.on('pompe-on', function (data) {
+		  	console.log('POMPE ON'); 
+		  	relay.close();
+	  	});
+	  	socket.on('pompe-off', function (data) {
+		  	console.log('POMPE OFF'); 
+		  	relay.open();
+	  	});
+	  	socket.on('pompe-arrosage', function (data) {
+		  	console.log('POMPE ARROSAGE'); 
+		  	lancerpompe(socket);
 	  	});
 	  	
 	
@@ -194,38 +225,56 @@ board.on("ready", function() {
 /*
 	Ajoute les infos sur sensor dans la Base	
 */
+
+function sendAllSensors(socket) {
+	var datenow = new Date().toLocaleString();
+	var heurenow = new Date().toLocaleTimeString();
+	//sensordata['date'] = datenow; 
+	sensordata['moisture'] = moisture.value;
+	sensordata['moisture2'] = moisture2.value;
+	sensordata['lumiere'] = lumiere.value;
+	sensordata['status'] = status;
+	socket.emit('all-sensors', { data: sensordata });
+			
+} 
+
 function saveMoisture(data) {
 	
-	jsondata = JSON.stringify(data);
 	
 	
-	console.log(jsondata);
-	//mysql.query("INSERT INTO "+TABLE+" (id,date,data,type) VALUES ('','"+data['date']+"','"+jsondata+"','sensors')");
+	console.log(data['moisture']+','+data['moisture2']+','+data['lumiere']);
+	mysql.query("INSERT INTO sensors (humidite1,humidite2,lumiere) VALUES ('"+data['moisture']+"','"+data['moisture2']+"','"+data['lumiere']+"')");
+	
 	console.log('Save moisture OK');
+	
+	
+	/*sensordata = {};
+	sensordata['date'] = data['date']; 
+	sensordata['moisture'] = data['moisture']; 
+	sensordata['moisture2'] = data['moisture2']; 
+	sensordata['lumiere'] = data['lumiere']; 
+	sensordata['status'] = data['status']; 
+		
+	
+	
+	request.post(
+	    'http://robotperso.eu/api/api.php/sensors',
+	    sensordata,
+	    function (error, response, body) {
+	        if (!error && response.statusCode == 200) {
+	            console.log(response);
+		        console.log(body);
+	        } else {
+		        console.log(response);
+		        console.log(body);
+	        }
+	    }
+	);
+	console.log('Save moisture OK');*/
 		
 } 
 
-function getMoistureData(socket) {
-	console.log('Get sensors data');
-	var count = 0;
-	var nb = 0;
-	/*var query = mysql.query("SELECT count(*) as count FROM sensors where type='sensors' ", function(err, rows, fields)   
-	{  
-	  if (err) throw err;  
-	  var stringi =  JSON.stringify(rows[0]);
-	  var parse =  JSON.parse(stringi);
-	  count =  parse.count
-	  nb = count - 600;
-	  var myq = "SELECT * FROM sensors where type='sensors' order by id ASC limit "+nb+",600";
-		var query = mysql.query(myq, function(err, rows, fields)   
-		{  
-		  if (err) throw err;  
-		  socket.emit('humidity-sensor', { data: rows });
-		});  
 
-	});*/
-	console.log('OK'); 
-} 
 
 function updateMoistureData(socket) {
 	console.log('UPDATE moisture');
@@ -245,19 +294,19 @@ function updateMoistureData(socket) {
 }
 
 function saveInfos(socket,data) {
-	/*
+	
 	data['text'] = mysql_real_escape_string(data['text']);
 	var datajson = JSON.stringify(data);
 	var datenow = new Date().toLocaleString();
 	mysql.query("INSERT INTO "+TABLE+" (id,date,data,type) VALUES ('','"+datenow+"','"+datajson+"','infos')");
 	console.log('Save Infos OK');
 	socket.emit('save-infos-ok');
-	*/
+	
 	
 }
 
 function listeInfos(socket) {
-	/*
+	
 	console.log('GET liste infos');
 		
 	var query = mysql.query("SELECT * FROM sensors where type='infos' order by id DESC limit 0,10", function(err, rows, fields)   
@@ -265,10 +314,16 @@ function listeInfos(socket) {
 	  if (err) throw err;  
 	  socket.emit('liste-infos', { data: rows });
 	  console.log('OK');
-	});  */	
+	});  	
 	
 } 
 
+function lancerpompe(socket) {
+	relay.close(); //on ouvre
+  	setTimeout(function() {
+		relay.open(); //on ferme 
+	} , 10000);
+}
 
 function lancer_camera() {
 	console.log("lancer camera");
