@@ -3,21 +3,16 @@
  Serveur Propre, avec uniquement les elements necessaire
  Gere 2 sensor d'humidité + 1 sensor de lumiere 
  */
-/*var HOST = 'localhost';
+
+var HOST = 'xxx';
 var PORT = 3306;
-var MYSQL_USER = 'root';
-var MYSQL_PASS = 'clic2clic';
-var DATABASE = 'rpi';
-var TABLE = 'sensor';*/
-var HOST = '91.134.242.138';
-var PORT = 3306;
-var MYSQL_USER = 'elie';
-var MYSQL_PASS = 'clic2clic55';
-var DATABASE = 'robotperso';
-var TABLE = 'sensors';
+var MYSQL_USER = 'xxx';
+var MYSQL_PASS = 'xxx';
+var DATABASE = 'xxx';
+var TABLE = 'xx';
 
 
-
+var https = require('https');
 // modules
 
 
@@ -51,7 +46,7 @@ var _mysql = require('mysql');
 
 // app parameters
 var five = require("johnny-five") , board, servo;
-var moisture,sensordata,status,lumiere,relay ="";
+var moisture,sensordata,status,lumiere,relay,madata,temp ="";
 
 var mysql = _mysql.createConnection({
 	    host: HOST,
@@ -82,7 +77,16 @@ board.on("ready", function() {
 	relay =  new five.Relay({
 		pin: 6
 	});
+	temp = new five.Thermometer({
+		 controller: "LM35",
+		 pin: "A3"
+   	});
+   		 
+   
 
+
+   		 
+   		 
 	
 	var cpt=0;
 	setTimeout(function() {
@@ -98,11 +102,13 @@ board.on("ready", function() {
 		}
 		var datenow = new Date().toLocaleString();
 		var heurenow = new Date().toLocaleTimeString();
-		
+		console.log('temp'+temp.value+ "---"+temp.celsius);
 		sensordata = {};
+		sensordata['date'] = datenow;
 		sensordata['moisture'] = moisture.value;
 		sensordata['moisture2'] = moisture2.value;
 		sensordata['lumiere'] = lumiere.value;
+		sensordata['temp'] = temp.celsius;
 		saveMoisture(sensordata);
 		//On ne prend les photos que le jour, lorsqu'il y a de la lumiere car pas de capteur Infra Rouge
 		if(heurenow>'00:45:00' && heurenow<'06:45:00') {
@@ -111,6 +117,14 @@ board.on("ready", function() {
 			console.log('JOUR ');
 			request('http://89.2.170.137:8080/?action=snapshot').pipe(fs.createWriteStream('./../images/pic-'+datenow+'.jpg'));
 		} 
+		
+		if(sensordata['moisture']>200) {
+			callIftt('Water_moisture',sensordata, function(data) {
+				console.log(data);
+			});
+		}//Fin if moisture
+		
+		
 		
 		cpt = cpt+1;
 		
@@ -131,10 +145,11 @@ board.on("ready", function() {
 		var datenow = new Date().toLocaleString();
 		var heurenow = new Date().toLocaleTimeString();
 		sensordata = {};
-		//sensordata['date'] = datenow; 
+		sensordata['date'] = datenow; 
 		sensordata['moisture'] = moisture.value;
 		sensordata['moisture2'] = moisture2.value;
 		sensordata['lumiere'] = lumiere.value;
+		sensordata['temp'] = temp.celsius;
 		//sensordata['status'] = status;
 		saveMoisture(sensordata);
 		if(heurenow>'00:45:00' && heurenow<'06:45:00') {
@@ -147,7 +162,20 @@ board.on("ready", function() {
 				cpt=0;
 			}
 		}
-		
+		console.log('temp '+temp.value+ "---"+temp.celsius);
+		/*if(sensordata['moisture']>200) {
+			callIftt('Water_moisture',sensordata, function(data) {
+				console.log(data);
+			});
+		}//Fin if moisture
+		*/
+		/*madata = {};
+		madata['titre']="test titre";
+		madata['texte'] = "texte infos";
+		callIftt('Moisture_low',madata, function(data) {
+				console.log(data);
+			});
+		*/
 		cpt = cpt+1;
 		
 	}), 300000);
@@ -156,6 +184,7 @@ board.on("ready", function() {
 		console.log('a user connected');
 	 	console.log('Connection');  
 	 	count++;
+	 	
 	 	socket.on('connected', function (data) {
 		 	socket.emit('node-connected'); 
 	 	});
@@ -229,11 +258,12 @@ board.on("ready", function() {
 function sendAllSensors(socket) {
 	var datenow = new Date().toLocaleString();
 	var heurenow = new Date().toLocaleTimeString();
-	//sensordata['date'] = datenow; 
+	sensordata['date'] = datenow; 
 	sensordata['moisture'] = moisture.value;
 	sensordata['moisture2'] = moisture2.value;
 	sensordata['lumiere'] = lumiere.value;
 	sensordata['status'] = status;
+	sensordata['temp'] = temp.celsius;
 	socket.emit('all-sensors', { data: sensordata });
 			
 } 
@@ -243,7 +273,7 @@ function saveMoisture(data) {
 	
 	
 	console.log(data['moisture']+','+data['moisture2']+','+data['lumiere']);
-	mysql.query("INSERT INTO sensors (humidite1,humidite2,lumiere) VALUES ('"+data['moisture']+"','"+data['moisture2']+"','"+data['lumiere']+"')");
+	mysql.query("INSERT INTO sensors (date,humidite1,humidite2,lumiere,temp) VALUES ('"+data['date']+"','"+data['moisture']+"','"+data['moisture2']+"','"+data['lumiere']+"','"+data['temp']+"')");
 	
 	console.log('Save moisture OK');
 	
@@ -327,7 +357,6 @@ function lancerpompe(socket) {
 
 function lancer_camera() {
 	console.log("lancer camera");
-	
 	exec('kill $(pgrep mjpg_streamer) > /dev/null 2>&1',function puts(error, stdout, stderr) { 
 		sys.puts(stdout);
 		setTimeout(function() {
@@ -343,10 +372,6 @@ function lancer_camera() {
 		, 500);
 		
 	});
-	
-	
-
-	
 }
 
 function arret_camera() {
@@ -384,3 +409,55 @@ function mysql_real_escape_string(str) {
 
 
 
+function callIftt(receipe,sensordata) {
+	if(receipe == 'Water_moisture' ) {
+		jsonObject = JSON.stringify({
+		    "value1" : sensordata['moisture'],
+		    "value2" : sensordata['moisture2'],
+		    "value3" : sensordata,
+		});	
+	} else if(receipe == 'Moisture_low') {
+		jsonObject = JSON.stringify({
+		    "value1" : sensordata['titre'],
+		    "value2" : sensordata['texte'],
+		});	
+	}
+					
+	// prepare the header
+	var postheaders = {
+	    'Content-Type' : 'application/json',
+	    'Content-Length' : Buffer.byteLength(jsonObject, 'utf8')
+	};
+	var optionspost = {
+	    host : 'maker.ifttt.com',
+		path : '/trigger/'+receipe+'/with/key/1EeqFcrJpPH5WRpaL7sev',
+	    method : 'POST',
+	    headers : postheaders
+	};
+	/*console.info('Options :'+jsonObject);	*/
+	
+	// do the POST call
+	var reqPost = https.request(optionspost, function(res) {
+	    console.log("statusCode: ", res.statusCode);
+	
+	    res.on('data', function(d) {
+	        console.info('POST result:\n');
+	        process.stdout.write(d);
+	        console.info('\n\nPOST completed');
+	    });
+	});
+	
+	reqPost.write(jsonObject);
+	reqPost.end();
+	reqPost.on('error', function(e) {
+	    console.error(e);
+	});
+	reqPost.on('data', function(e) {
+	    console.log(e);
+	});
+}
+	
+	
+					
+				
+				
