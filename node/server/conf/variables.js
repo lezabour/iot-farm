@@ -1,17 +1,17 @@
 module.exports = { 
 	//MYSQL
-	HOST : '91.134.242.138',
+	HOST : 'xxx',
 	PORT : 3306,
-	MYSQL_USER : 'elie',
-	MYSQL_PASS : 'clic2clic55',
-	DATABASE : 'robotperso',
-	TABLE : 'sensors',
+	MYSQL_USER : 'xxx',
+	MYSQL_PASS : 'xxxx',
+	DATABASE : 'xxx',
+	TABLE : 'xxx',
 	
 	//Stream photo / video 
-	stream : "http://89.2.170.137:8080/?action=snapshot",
+	stream : "http://xxx.xxx.xxx.xxx:8080/?action=snapshot",
 	
 	//IFTTT KEY
-	ifttt_key : '1EeqFcrJpPH5WRpaL7sev',
+	ifttt_key : 'xxxxx',
 	
 	//Delay of update datas
 	maj_delay : 300000,
