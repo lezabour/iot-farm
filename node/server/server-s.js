@@ -7,9 +7,6 @@
  
 //Load external variables from config file 
 var variables = require('./conf/variables.js');
-console.log(variables.HOST);
-
-
 
 //Load all required librairies
 var app = require('express')();
@@ -77,7 +74,7 @@ board.on("ready", function() {
 	});
 	temp = new five.Thermometer({
 		 controller: "LM35",
-		 pin: "A3"
+		 pin: "A4"
    	});
    		 
    	//First loop at launch	 	
@@ -188,18 +185,7 @@ board.on("ready", function() {
 		  	updateMoistureData(socket);
 	  	});
 	  	
-	  	/**********************
-			Manage Infos in DB
-		***********************/
-	  	//Save new infos
-	  	socket.on('save-infos', function (data) {
-		  	console.log('Demande sauvegarde Infos'); 
-		  	saveInfos(socket,data);
-	  	});
-	  	socket.on('liste-infos', function (data) {
-		  	console.log('Demande de liste infos'); 
-		  	listeInfos(socket);
-	  	});
+	  	
 	  	
 	  	/**********************
 			Manage PUMP
@@ -264,7 +250,7 @@ function sendAllSensors(socket) {
 */
 function saveDatas(data) {
 	
-	console.log('moisture1:'+data['moisture']+', Moisture2: '+data['moisture2']+', Temperature:'+data['temp']+', Lumiere:'+data['lumiere']);
+	console.log(data['date']+' - moisture1:'+data['moisture']+', Moisture2: '+data['moisture2']+', Temperature:'+data['temp']+', Lumiere:'+data['lumiere']);
 	
 	jsonObject = JSON.stringify({
 		"date" : data['date'],
@@ -328,30 +314,6 @@ function updateMoistureData(socket) {
 	
 }
 
-function saveInfos(socket,data) {
-	
-	data['text'] = mysql_real_escape_string(data['text']);
-	var datajson = JSON.stringify(data);
-	var datenow = new Date().toLocaleString();
-	mysql.query("INSERT INTO "+TABLE+" (id,date,data,type) VALUES ('','"+datenow+"','"+datajson+"','infos')");
-	console.log('Save Infos OK');
-	socket.emit('save-infos-ok');
-	
-	
-}
-
-function listeInfos(socket) {
-	
-	console.log('GET liste infos');
-		
-	var query = mysql.query("SELECT * FROM sensors where type='infos' order by id DESC limit 0,10", function(err, rows, fields)   
-	{  
-	  if (err) throw err;  
-	  socket.emit('liste-infos', { data: rows });
-	  console.log('OK');
-	});  	
-	
-} 
 
 function lancerpompe(socket) {
 	relay.close(); //on ouvre
@@ -395,34 +357,6 @@ function reboot(socket) {
 		
 	});
 }
-
-function mysql_real_escape_string(str) {
-    return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, function (char) {
-        switch (char) {
-            case "\0":
-                return "\\0";
-            case "\x08":
-                return "\\b";
-            case "\x09":
-                return "\\t";
-            case "\x1a":
-                return "\\z";
-            case "\n":
-                return "\\n";
-            case "\r":
-                return "\\r";
-            case "\"":
-            case "'":
-            	return " "; 
-            case "\\":
-            case "%":
-                return "\\"+char; // prepends a backslash to backslash, percent,
-                                  // and double/single quotes
-        }
-    });
-}
-
-
 
 function callIftt(receipe,sensordata) {
 	if(receipe == 'Water_moisture' ) {
